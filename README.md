@@ -69,16 +69,9 @@ However for this lab you just need to replace the existing `pom.xml` with the fi
 
 To build and run the project, run Maven with the `verify` goal (in your IDE or command line). This will compile, package (generating the WAR file), and now run the integration tests on the deployed Web service. The integration tests should run without error.
 
-#### 
-
-#### (d) Build and run the project on GitHub
-
-On Github, you can setup a CI-CD workflow to automatically build and test your project when you push the code. TO create a workflow, go to workflow tab on your github repository and choose `Java with Maven`. Github will generate a maven.yml file and allow you to edit. You can edit the maven command on the last line to specify the maven goal to run. Also, please make sure to use Java 11 for building as maven failsafe plugin require. To test this workflow, you can push the code to your repository and see the log in the workflow tab.
-![](github-workflow.png)
-
 Exercise Two - Build the supplied Parolee JAX-RS application
 ----------
-Project `lab-servlet-parolee` is a simple JAX-RS project. It provides a REST Web service that allows clients (consumers) to retrieve, create, update and delete parolees.
+Project `lab-servlet-parolee` is a simple JAX-RS project. It provides a REST Web service that allows clients (consumers) to retrieve, create, update and delete parolees. You should look at the code (including the test class) to understand how everything fits together. This understanding will be useful for the third exercise.
 
 From version 3.0 of the Servlet specification, servlet containers are JAX-RS aware. This means that they automatically load the JAX-RS servlet class (`HttpServletDispatcher`) at startup time. Since you are packaging a WAR project, you still need a `web.xml` file - but it can be empty as the servlet container knows which `Servlet` class to instantiate. Hence, the `web.xml` file for this project is empty.
  
@@ -102,7 +95,7 @@ After editing the properties file, rebuild and run the project so that you can e
 
 Exercise Three - Develop a JAX-RS Concert service
 ----------
-Project `lab-servlet-concert` is a partially complete JAX-RS project for a simple REST Web service that manages concerts. The project includes a skeleton Web service implementation (`ConcertResource`), an integration test (`ConcertResourceIT`), a class to represent concerts (`Concert`) and a complete POM. 
+The project `lab-servlet-concert` is a partially complete JAX-RS project for a simple REST Web service that manages concerts. The project includes a skeleton Web service implementation (`ConcertResource`), an integration test (`ConcertResourceIT`), a class to represent concerts (`Concert`) and a complete POM. 
 
 The service is to provide the following REST interface:
 
@@ -116,11 +109,14 @@ The service is to provide the following REST interface:
 
 Instead of using JSON (as with the Parolee service), this service is to use Java serialization as the format for exchanging `Concert` data in HTTP request and response message bodies. In addition, the service is to track a client session using a HTTP cookie.
 
-#### Complete the application
-Begin by importing the `lab-servlet-concert` project into your IDE. Complete the application service, implementing the necessary `Application` subclass and fleshing out the `ConcertResource` class. For `ConcertResource`, you need to add instance variables, method bodies and all metadata (JAX-RS annotations).
+#### Details
 
-###### Use of Java serialization
-The JAX-RS framework is extensible with respect to data formats (more on this in Lecture 05). For this project, a class named `SerializedMessageBodyReaderAndWriter` is provided that plugs into the JAX-RS framework and which manages the conversion of serialized data in HTTP message bodies to `Serializable` Java objects. You don't need to be familiar with the details of this class' implementation - suffice it implements two JAX-RS interfaces `MessageBodyReader` and `MessageBodyWriter`. Any implementation of these interfaces can be registered with the JAX-RS framework to manage conversion between some format and Java objects.
+Set up the project in your IDE. You will need to complete the application service by implementing the necessary `Application` subclass and fleshing out the `ConcertResource` class. For `ConcertResource`, you need to add instance variables, method bodies and all metadata (JAX-RS annotations).
+
+We suggest you first run the maven `verify` phase. Make sure you understand what the tests are expecting (e.g where the compiled code is expected to be, what files the tests are looking for) by looking at the output of this step. You will see all the tests fail, so study the test class to understand what it is expecting. It may help to compare what you see here with what you see in the Parolee project in Exercise Two.
+
+#### Use of Java serialization
+The JAX-RS framework is extensible with respect to data formats (more on this in lectures). For this project, a class named `SerializedMessageBodyReaderAndWriter` is provided that plugs into the JAX-RS framework and which manages the conversion of serialized data in HTTP message bodies to `Serializable` Java objects. You don't need to be familiar with the details of this class' implementation - suffice it implements two JAX-RS interfaces `MessageBodyReader` and `MessageBodyWriter`. Any implementation of these interfaces can be registered with the JAX-RS framework to manage conversion between some format and Java objects.
 
 The `SerializedMessageBodyReaderAndWriter` is already registered on the client-side in class `ConcertResourceIT` (see the `createClient()` method). For the server-side, you'll need to handle registration in your `Application` subclass. To do this you should override `Application`'s `getClasses()` method to return a `Set` that contains the `SerializedMessageBodyReaderAndWriter` class.
 
@@ -148,7 +144,7 @@ Using the registered `MessageBodyReader` and `MessageBodyWriter` support for the
 
 The client (`ConcertResourceIT`), when preparing a Web service request, specifies this as its preferred content type. Similarly, in `ConcertResource`, you should use appropriate metadata annotations to specify that methods that produce or consume content do so using this data format. As you can see in `ConcertResource`, the method signatures are written to use class `Concert` directly - unlike the `lab-servlet-parolee` project, there's no need to use stream I/O.
 
-###### Stateless communication protocol
+#### Stateless communication protocol
 As discussed in class, HTTP is a stateless protocol. A JAX-RS Web service thus processes each incoming request without knowledge of earlier requests. The Concert Web service is required to track each client that is making requests of the service, and should recognise when requests are being made by the same client. Hence, each client is to be assigned a unique identity by the service, and should include this identity as part of each HTTP request.
 
 In developing a client-tracking mechanism, you should use HTTP cookies. The first time a client sends a request to the Web service, it won't have a cookie - in which case the service should generate one and return it in the HTTP response corresponding to the request. On all subsequent invocations, the HTTP request message should contain the cookie, thereby identifying the client that made the request. In a Web service that stores data for clients in a database, the cookie value could be used to retrieve data associated with the requesting client (more on the use of databases for persistence later).
