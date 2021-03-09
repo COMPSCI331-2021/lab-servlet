@@ -5,11 +5,15 @@ Before you start
 ----------
 The purpose of this lab is to give you some practical experience with configuring and developing simple REST Web services. You will work with a servlet container, first directly with servlets and then with JAX-RS.
 
-Begin by forking this repository, then cloning your fork onto your local machine.
+You must first join a "group" on Canvas (details on the Assignment page for the lab). Then you will need to set up your teams. This process was described in the previous lab.
+
 
 Exercise One - Build the supplied Fibonacci Servlet application
 ----------
-The `lab-servlet-fibonacci` project contains a Web application that is implemented using a servlet. The project includes:
+
+The `lab-servlet-fibonacci` project contains a Web application that is implemented using a servlet. This exercise is just to see such an application in action. You should look at the source code (including the tests) and configuration files and confirm your understanding of what is going on. The only change you have to make is to the pom.xml file.
+
+The project includes:
 
 - `RabbitCounterServlet`, located in the `src/main/java` directory. This is a servlet that implements a REST Web service for manipulating numbers in the Fibonacci sequence. The servlet responds to HTTP GET requests to retrieve either a value at a particular position within the sequence, or all Fibonacci values known to the Web service. It responds to HTTP POST requests to generate and store values for specified positions within the sequence, and, for HTTP DELETE requests, it deletes the value at a specified sequence position.
 
@@ -19,19 +23,31 @@ The `lab-servlet-fibonacci` project contains a Web application that is implement
 
 - `pom.xml`, a minimal POM file that defines the output of the build process to be a WAR file (note the `<packaging>` element). In addition, the POM file specifies dependencies on the servlet library, necessary to compile and run `RabbitCounterServlet`, slf4j logging and JUnit.
 
-###### Project structure
+#### Project structure
+
 The project is structured as a Maven single-module project, and includes the directory structure for storing the `web.xml` file: `src/main/webapp/WEB-INF/web.xml`. Where the POM's `<packaging>` element's value is `war`, the `web.xml` file is expected to be stored in the `WEB-INF` directory, and Maven's `package` phase generates a `war` file as opposed to a `jar` (which is the default).
 
 The structure of a `war` file is well specified; it includes a directory named `WEB-INF` that contains the `web.xml` file and two subdirectories: `classes` and `lib`. `classes` contains the Web application's compiled code and any other resources, and `lib` contains any third-party libraries (`jar` files). Since a `war` file has a well-defined structure, any servlet container, e.g. Jetty or Tomcat, can be used to host the Web application contained in the `war` file. You might want to view the contents of the Fibonacci `war` file once you've built the application - you'll be able to find it in the projects `target` folder once built, and can view it using any program capable of opening Zip archives, such as 7-Zip.
 
 The purpose of the `web.xml` file is to specify the servlet class and url pattern for which the servlet will process HTTP requests. The supplied file names the servlet `RabbitCounter` and declares that the servlet class is `lab.servlet.fibonacci.RabbitCounterServlet`. It also specifies that the servlet will process HTTP requests where the domain name has a `rabbit` suffix. Where the domain name prefix is `localhost`, requests of the form `http://localhost/rabbit` would be routed through to the `RabbitCounter` servlet.
 
-#### (a) Import the project
-Import the project into your IDE, following the same procedure in the previous lab. After you configure the parent project as a maven project, you have to import the three child projects into the workspace. In order to do this, go to import->Maven->Existing maven project. Then, select only pom files of child projects to import as shown in the figure below. 
+#### (a) Build project
+
+Build the project. You can do this from the command line with:
+```
+prompt> mvn verify
+```
+This runs the <tt>verify</tt> phase (and any phases before it, including compilation and building the <tt>war</tt> file). This phase is intended to run the intergration tests, but there is nothing currently specified in the pom.xml file as to how to do that (see below).
+
+If you want to use an IDE you will need to [import the maven project](EclipseImportMaven.md).
+After you configure the parent project as a maven project, you have to import the three child projects into the workspace. In order to do this, go to import->Maven->Existing maven project. Then, select **only pom files of child projects to import** as shown in the figure below. 
 
 ![](eclipse-import.png)
 
-#### (b) Flesh out the POM file
+#### (b) Add Integration Tests
+
+As noted above, the existing `pom.xml` does not actually do anything for integration tests. We need to change it to do so. We will set up the project to use the maven Jetty plugin.
+
 As part of the Maven build process, Maven can arrange for the packaged Web service to be deployed in an *embedded* servlet container. An embedded container is one that runs in the same process as the client (integration tests in this case) that will invoke the Web application hosted by the container.
 
 Just before the `integration-test` phase, you want Maven to start up the embedded servlet container and host the Web application. Once started, you want Maven to run the integration test. When the tests have finished, Maven should shutdown the servlet container. The use of an embedded servlet container in this way is very convenient for development and testing - you don't need to install and run a full standalone servlet container or repeatedly redeploy the WAR file every time you recompile the code. Using build tools like Maven in this way thus promotes *testability* of distributed applications.
@@ -46,79 +62,18 @@ A description of how to configure the two plugins so that Jetty starts up and de
 
 - http://maven.apache.org/surefire/maven-failsafe-plugin/usage.html
 
-Other than what's described in the above web page, you need additional declarations in the `configuration` element of the Jetty plugin:
-
-```xml
-<plugin>
-    <groupId>org.eclipse.jetty</groupId>
-    <artifactId>jetty-maven-plugin</artifactId>
-    <version>${jetty.version}</version>
-    <configuration>
-        <httpConnector>
-            <port>${servlet.container.port}</port>
-        </httpConnector>
-        <scanIntervalSeconds>10</scanIntervalSeconds>
-        <stopPort>9000</stopPort>
-        <stopWait>10</stopWait>
-        <stopKey>STOP</stopKey>
-    </configuration>
-    <executions>
-        <execution>
-            <id>start-jetty</id>
-            <phase>pre-integration-test</phase>
-            <goals>
-                <goal>start</goal>
-            </goals>
-        </execution>
-        <execution>
-            <id>stop-jetty</id>
-            <phase>post-integration-test</phase>
-            <goals>
-                <goal>stop</goal>
-            </goals>
-        </execution>
-    </executions>
-</plugin>
-```
-
-The `httpConnector` specifies the port that the servlet container will listen on for incoming connection requests.
-
-If you get really stuck with configuring the plugins, look ahead to the project for exercise two,  `lab-servlet-parolee`. The POM for this configures the plugins as required for a different Web application project.
+However for this lab you just need to replace the existing `pom.xml` with the file `pom-it.xml`. You should look at the two files to see the differences between them.
 
 #### (c) Build and run the project locally
-To build and run the project, run Maven with the `verify` goal. This will compile, package (generating the WAR file), and run the integration tests on the deployed Web service. The integration tests should run without error.
+
+To build and run the project, run Maven with the `verify` goal (in your IDE or command line). This will compile, package (generating the WAR file), and now run the integration tests on the deployed Web service. The integration tests should run without error.
+
+#### 
 
 #### (d) Build and run the project on GitHub
+
 On Github, you can setup a CI-CD workflow to automatically build and test your project when you push the code. TO create a workflow, go to workflow tab on your github repository and choose `Java with Maven`. Github will generate a maven.yml file and allow you to edit. You can edit the maven command on the last line to specify the maven goal to run. Also, please make sure to use Java 11 for building as maven failsafe plugin require. To test this workflow, you can push the code to your repository and see the log in the workflow tab.
 ![](github-workflow.png)
-
-#### (e) Reflect on the project
-Study the code to ensure you understand it, and think about the following questions. Record your thoughts here and in your journal:
-
-- How does use of the servlet container and programming model simplify application development? Consider what would be involved if you had to write your own HTTP server.
-
-```
-
-```
-
-- In what way is servlet programming still "low-level" programming? 
-
-```
-
-```
-
-- How does the servlet leverage the HTTP protocol?
-
-```
-
-```
-
-- Why is the servlet's state (`cache`) a threadsafe `Map`?
-
-```
-
-```
-
 
 Exercise Two - Build the supplied Parolee JAX-RS application
 ----------
@@ -143,19 +98,6 @@ log4j.logger.org.apache.http=DEBUG
 This causes DEBUG-level messages (in addition to INFO-level messages) to be output by any code in package `org.apache.http` or its subpackages. When set to DEBUG, a lot of useful information about HTTP messages, including headers, payloads and response codes is logged, and, in the case of the supplied `log4j.properties` file, displayed to stdout.
 
 After editing the properties file, rebuild and run the project so that you can examine the contents of the HTTP messages being generated by JAX-RS and exchanged between the client and Web service.
-
-#### (c) Reflect on the project
-Study how the JAX-RS API is used in this simple project. Consider & record:
-
-- The way in which the REST interface offers CRUD functionality for parolee resources.
-
-- The abstraction offered by the the JAX-RS framework over basic servlet programming.
-
-- Aspect(s) of the `lab-servlet-parolee` project that you think could be better addressed by the JAX-RS framework.
-
-```
-
-```
 
 Exercise Three - Develop a JAX-RS Concert service
 ----------
@@ -227,3 +169,19 @@ Studying the `lab-servlet-parolee` project will be helpful too. In addition, hav
 Javadoc documentation for JAX-RS (which is part of Java Enterprise Edition) is available at:
 
 - <https://docs.oracle.com/javaee/7/api/>
+
+<h2>Assessment</h2>
+
+The marking of this lab will be based on your team repository as of Friday 26
+March 1700hrs.
+
+Assessment will be performed by examining the commit logs and other
+information associated with your team repository.  You must demonstrate that
+you have engaged with the lab material and fully participated with the
+team. This means we expect to see non-trivial commits, with meaningful commit
+messages. This will mainly be for exercise 3, as the first 2 exercises do not
+require much work. Different team members will do different things and
+different times, but we will be looking for evidence that there was
+cooperation and collaboration. Examples including making useful commits, and
+commenting on actions by other team members.
+
