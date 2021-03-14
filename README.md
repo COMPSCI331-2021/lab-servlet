@@ -182,3 +182,5 @@ different times, but we will be looking for evidence that there was
 cooperation and collaboration. Examples including making useful commits, and
 commenting on actions by other team members.
 
+Your team must be different to that of Lab02. Any team that has 2 or more members that were in the same team for Lab02 will receive zero marks for this lab.
+
